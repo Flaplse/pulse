@@ -1,81 +1,7 @@
-﻿const app = document.getElementById('app');
-const $ = id => document.getElementById(id);
-
-/* ================= Хранилище ================= */
-const mem = {};
-const st = {
-  get(k, d) {
-    try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch (e) {}
-    return k in mem ? mem[k] : d;
-  },
-  set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
-};
-
-/* ================= Данные ================= */
-const G = [['#7c5cff','#2fb8ff'],['#ff7ab6','#ff9a5c'],['#22c993','#2fb8ff'],['#f5b73b','#ff6b6b'],['#8e6cff','#ff7ab6']];
-const BOTS = [
-  {id:'calc', name:'Калькулятор', role:'ИИ · считает примеры', g:G[2], type:'bot',
-   hi:'Привет! Я считаю любые примеры. Попробуй: 2+2*3, корень из 144, 15% от 200, 2^10, sin(30), 10!. Тригонометрия работает в градусах.'},
-  {id:'eva', name:'Ева', role:'ИИ · собеседник', g:G[1], type:'bot',
-   hi:'Привет! Я Ева 🙂 Можем поболтать: спрашивай про время, шутки, советы. А как тебя зовут?'}
-];
-const EM = ['😊','😂','😍','🥰','😎','🤔','😢','😡','👍','👎','👏','🙏','🔥','🎉','💡','❤️','💔','🤝','👀','🚀','⭐','✅','❌','🎁','☕','🍕','🎵','📞','⏰','🌙','☀️','🐱'];
-const PAGES = ['home','login','register','chat','profile'];
-
-/* ================= Утилиты ================= */
-const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const tm = ts => new Date(ts).toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-3);
-const hash = (pass, email) => { let h = 5381; for (const c of email + ':' + pass) h = ((h * 33) ^ c.codePointAt(0)) >>> 0; return h.toString(36); };
-const users = () => st.get('users', []);
-const me = () => { const e = st.get('me', null); return users().find(u => u.email === e) || null; };
-const go = p => { location.hash = p; };
-
-function toast(t) {
-  const d = document.createElement('div');
-  d.className = 'toast'; d.textContent = t;
-  document.body.appendChild(d);
-  setTimeout(() => d.remove(), 3200);
-}
-function av(name, g, size) {
-  const ch = (Array.from((name || '?').trim())[0] || '?').toUpperCase();
-  const s = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size / 2.6)}px;` : '';
-  return `<div class="av" style="background:linear-gradient(135deg,${g[0]},${g[1]});${s}">${esc(ch)}</div>`;
-}
-
-// старым аккаунтам выдаём id
-(function () {
-  const a = users(); let ch = false;
-  a.forEach(u => { if (!u.id) { u.id = uid(); ch = true; } });
-  if (ch) st.set('users', a);
-})();
-
-/* ================= Тема ================= */
-const themeNow = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-function applyTheme() { const t = st.get('theme', null); if (t) document.documentElement.dataset.theme = t; }
-function toggleTheme() {
-  const t = themeNow() === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = t;
-  st.set('theme', t);
-}
-
-/* ================= ИИ: калькулятор ================= */
-function calcParse(src) {
-  const t = src.match(/\d+\.?\d*|\.\d+|[a-zπ]+|[-+*/^%!(),]/g) || [];
-  let i = 0;
-  const peek = () => t[i], next = () => t[i++];
-  const deg = f => x => f(x * Math.PI / 180);
-  const F = {sqrt:Math.sqrt, abs:Math.abs, ln:Math.log, log:Math.log10, exp:Math.exp, floor:Math.floor, ceil:Math.ceil, round:Math.round,
-             sin:deg(Math.sin), cos:deg(Math.cos), tan:deg(Math.tan)};
-  const K = {pi:Math.PI, 'π':Math.PI, e:Math.E};
-  const fact = n => { if (n < 0 || n > 170 || n % 1) throw 0; let r = 1; for (let k = 2; k <= n; k++) r *= k; return r; };
-  const imp = () => { const p = peek(); return p === '(' || (p !== undefined && /^[a-zπ]/.test(p)); };
-
-  function expr() { let v = term(); while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term(); return v; }
-  function term() {
+function term() {
     let v = unary();
     while (['*','/','%'].includes(peek()) || imp()) {
-    if (imp()) { v *= pow(); continue; }
+      if (imp()) { v *= pow(); continue; }
       const o = next(), r = unary();
       v = o === '*' ? v * r : o === '/' ? v / r : v % r;
     }
@@ -150,6 +76,81 @@ function evaReply(raw) {
       if (isFinite(v)) return pick([`Это легко: ${fmt(v)}`, `Получается ${fmt(v)}. А для сложных примеров есть Калькулятор 🧮`, `${fmt(v)}. Считать люблю 😄`], 'm');
     } catch (e) {}
   }
+  const app = document.getElementById('app');
+const $ = id => document.getElementById(id);
+
+/* ================= Supabase ================= */
+const SB_URL = 'https://capmrkvpqgajrmuryxak.supabase.co';
+const SB_KEY = 'sb_publishable_MmV8k4mmJhxdTpY1fV-HsA_eagQzifs';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+/* ================= Локальное хранилище (тема, боты) ================= */
+const mem = {};
+const st = {
+  get(k, d) {
+    try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch (e) {}
+    return k in mem ? mem[k] : d;
+  },
+  set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ================= Данные ================= */
+const G = [['#7c5cff','#2fb8ff'],['#ff7ab6','#ff9a5c'],['#22c993','#2fb8ff'],['#f5b73b','#ff6b6b'],['#8e6cff','#ff7ab6']];
+const BOTS = [
+  {id:'calc', name:'Калькулятор', role:'ИИ · считает примеры', g:G[2], type:'bot',
+   hi:'Привет! Я считаю любые примеры. Попробуй: 2+2*3, корень из 144, 15% от 200, 2^10, sin(30), 10!. Тригонометрия работает в градусах.'},
+  {id:'eva', name:'Ева', role:'ИИ · собеседник', g:G[1], type:'bot',
+   hi:'Привет! Я Ева 🙂 Можем поболтать: спрашивай про время, шутки, советы. А как тебя зовут?'}
+];
+const EM = ['😊','😂','😍','🥰','😎','🤔','😢','😡','👍','👎','👏','🙏','🔥','🎉','💡','❤️','💔','🤝','👀','🚀','⭐','✅','❌','🎁','☕','🍕','🎵','📞','⏰','🌙','☀️','🐱'];
+const PAGES = ['home','login','register','chat','profile'];
+
+/* ================= Утилиты ================= */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tm = ts => new Date(ts).toLocaleTimeString('ru', {hour:'2-digit', minute:'2-digit'});
+let ME = null;                       // текущий пользователь {id, email, name, status, g}
+const me = () => ME;
+const go = p => { location.hash = p; };
+
+function toast(t) {
+  const d = document.createElement('div');
+  d.className = 'toast'; d.textContent = t;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 3200);
+}
+function av(name, g, size) {
+  const ch = (Array.from((name || '?').trim())[0] || '?').toUpperCase();
+  const s = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size / 2.6)}px;` : '';
+  return `<div class="av" style="background:linear-gradient(135deg,${g[0]},${g[1]});${s}">${esc(ch)}</div>`;
+}
+const trErr = m => /invalid login/i.test(m) ? 'Неверный email или пароль'
+  : /already registered/i.test(m) ? 'Такой email уже зарегистрирован'
+  : /rate limit/i.test(m) ? 'Слишком много попыток, подождите немного'
+  : /fetch/i.test(m) ? 'Нет связи с сервером. Проверьте интернет и адрес проекта'
+  : m;
+
+/* ================= Тема ================= */
+const themeNow = () => document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+function applyTheme() { const t = st.get('theme', null); if (t) document.documentElement.dataset.theme = t; }
+function toggleTheme() {
+  const t = themeNow() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  st.set('theme', t);
+}
+
+/* ================= ИИ: калькулятор ================= */
+function calcParse(src) {
+  const t = src.match(/\d+\.?\d*|\.\d+|[a-zπ]+|[-+*/^%!(),]/g) || [];
+  let i = 0;
+  const peek = () => t[i], next = () => t[i++];
+  const deg = f => x => f(x * Math.PI / 180);
+  const F = {sqrt:Math.sqrt, abs:Math.abs, ln:Math.log, log:Math.log10, exp:Math.exp, floor:Math.floor, ceil:Math.ceil, round:Math.round,
+             sin:deg(Math.sin), cos:deg(Math.cos), tan:deg(Math.tan)};
+  const K = {pi:Math.PI, 'π':Math.PI, e:Math.E};
+  const fact = n => { if (n < 0 || n > 170 || n % 1) throw 0; let r = 1; for (let k = 2; k <= n; k++) r *= k; return r; };
+  const imp = () => { const p = peek(); return p === '(' || (p !== undefined && /^[a-zπ]/.test(p)); };
+
+  function expr() { let v = term(); while (peek() === '+' || peek() === '-') v = next() === '+' ? v + term() : v - term(); return v; }
   if ((m = t.match(/(?:меня зовут|мое имя|зови меня)\s+([а-яa-z]{2,15})/))) {
     S.name = m[1][0].toUpperCase() + m[1].slice(1); st.set(KEY, S);
     return pick([`Приятно познакомиться, ${S.name}! 🤝`, `${S.name} — отличное имя! Запомнила 😊`, `Очень рада, ${S.name}! О чём поболтаем?`], 'nm');
@@ -198,46 +199,76 @@ function evaReply(raw) {
     : pick(['Понимаю 🙂 Продолжай', 'Угу, слушаю тебя', 'Расскажи ещё']);
 }
 
-/* ================= Друзья ================= */
-let C = {}, F = [], cid = null, U = {}, typ = {};
-const save = () => { const u = me(); if (u) st.set('c_' + u.email, C); };
-const resetState = () => { C = {}; F = []; cid = null; U = {}; typ = {}; };
-function add(id, m) { (C[id] = C[id] || []).push(m); save(); return m; }
-
-function fcontact(f) {
-  const lu = users().find(x => x.id === f.uid);
-  return {id:f.uid, name:lu ? lu.name : f.name, role:lu ? 'Друг · ' + lu.status : 'Друг · на другом устройстве',
-          g:G[lu ? lu.g : f.uid.charCodeAt(0) % G.length], type:'friend', local:!!lu, user:lu};
+/* ================= Данные с сервера ================= */
+let C = {}, FR = [], MS = {}, cid = null, U = {}, typ = {}, rt = null;
+const saveC = () => { if (ME) st.set('c_' + ME.email, C); };
+const isBot = id => BOTS.some(b => b.id === id);
+const msgsOf = id => (isBot(id) ? C : MS)[id] || [];
+function addBot(id, m) { (C[id] = C[id] || []).push(m); saveC(); return m; }
+function resetState() {
+  C = {}; FR = []; MS = {}; cid = null; U = {}; typ = {}; ME = null;
+  if (rt) { sb.removeChannel(rt); rt = null; }
 }
-const contacts = () => BOTS.concat(F.map(fcontact));
-
-function addFriend(code) {
-  const u = me(), i = code.indexOf('~');
-  const id = (i < 0 ? code : code.slice(0, i)).trim();
-  let name = 'Друг';
-  try { if (i >= 0) name = decodeURIComponent(code.slice(i + 1)) || name; } catch (e) {}
-  if (!/^[a-z0-9]{6,20}$/.test(id)) return toast('Неверная ссылка приглашения');
-  if (id === u.id) return toast('Это ваша собственная ссылка 🙂');
-  F = st.get('f_' + u.email, []);
-  if (F.some(f => f.uid === id)) return toast('Этот друг уже добавлен');
-  F.push({uid:id, name:name.slice(0, 30)});
-  st.set('f_' + u.email, F);
-  const lu = users().find(x => x.id === id);
-  if (lu) {
-    const F2 = st.get('f_' + lu.email, []);
-    if (!F2.some(f => f.uid === u.id)) { F2.push({uid:u.id, name:u.name}); st.set('f_' + lu.email, F2); }
-  }
-  toast(lu ? 'Друг добавлен 🎉' : 'Друг добавлен, но он на другом устройстве: для доставки сообщений нужен сервер');
+function contacts() {
+  return BOTS.concat(FR.map(f => ({id:f.id, name:f.name, role:'Друг · ' + f.status, g:G[f.g] || G[0], type:'friend'})));
+}
+const normMsg = r => ({id:r.id, m:r.sender === ME.id ? 1 : 0, t:r.body, ts:Date.parse(r.created_at)});
+function pushMsg(r) {
+  const o = r.sender === ME.id ? r.receiver : r.sender;
+  const a = MS[o] = MS[o] || [];
+  if (a.some(x => x.id === r.id)) return null;
+  const m = normMsg(r); a.push(m);
+  return {o, m};
+}
+async function loadFriends() {
+  const {data:fr} = await sb.from('friends').select('friend_id').eq('user_id', ME.id);
+  const ids = (fr || []).map(x => x.friend_id);
+  if (!ids.length) { FR = []; return; }
+  const {data:ps} = await sb.from('profiles').select('id,name,status,g').in('id', ids);
+  FR = ps || [];
+}
+async function loadMsgs() {
+  const {data} = await sb.from('messages').select('*')
+    .or(`sender.eq.${ME.id},receiver.eq.${ME.id}`).order('created_at').limit(1000);
+  MS = {}; (data || []).forEach(pushMsg);
+}
+function subscribe() {
+  if (rt) sb.removeChannel(rt);
+  rt = sb.channel('pulse-' + ME.id)
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'messages', filter:'receiver=eq.' + ME.id}, p => {
+      const x = pushMsg(p.new);
+      if (!x || !$('list')) return;
+      if (x.o === cid) addMsg(x.m); else U[x.o] = (U[x.o] || 0) + 1;
+      refreshList();
+    })
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'friends', filter:'user_id=eq.' + ME.id}, async () => {
+      await loadFriends(); refreshList();
+    })
+    .subscribe();
+}
+async function enter(user) {
+  const {data:p} = await sb.from('profiles').select('*').eq('id', user.id).single();
+  ME = {id:user.id, email:user.email, name:p ? p.name : 'Без имени', status:p ? p.status : 'На связи', g:p ? p.g : 0};
+  await Promise.all([loadFriends(), loadMsgs()]);
+  subscribe();
+}
+async function addFriendById(id) {
+  id = (id || '').trim();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) { toast('Неверная ссылка приглашения'); return false; }
+  if (id === ME.id) { toast('Это ваша собственная ссылка 🙂'); return false; }
+  const {error} = await sb.rpc('add_friend', {friend:id});
+  if (error) { toast(/not found/.test(error.message) ? 'Пользователь не найден' : 'Не удалось добавить друга'); return false; }
+  await loadFriends();
+  toast('Друг добавлен 🎉');
   return true;
 }
-
 function invite() {
-  const u = me(), link = location.href.split('#')[0] + '#join=' + u.id + '~' + encodeURIComponent(u.name);
+  const link = location.href.split('#')[0] + '#join=' + ME.id;
   const m = document.createElement('div');
   m.className = 'modal';
   m.innerHTML = `<div class="card">
     <div class="fx sb"><h2 style="font-size:22px">Пригласить друга</h2><button class="btn ic" data-act="close">✕</button></div>
-    <div class="mut" style="font-size:14px;line-height:1.5">Отправьте ссылку другу. Когда он зарегистрируется, вы появитесь в списках друг у друга.</div>
+    <div class="mut" style="font-size:14px;line-height:1.5">Отправьте ссылку другу. Когда он зарегистрируется или войдёт по ней, вы появитесь в списках друг у друга.</div>
     <input id="lk" readonly value="${esc(link)}">
     <div class="fx"><button class="btn p grow" data-act="copy">Копировать</button>${navigator.share ? '<button class="btn grow" data-act="share">Поделиться</button>' : ''}</div>
     <label>Добавить друга по ссылке<input id="al" placeholder="Вставьте ссылку приглашения"></label>
@@ -250,8 +281,7 @@ const blobs = '<div class="bg"><i style="width:380px;height:380px;background:#7c
 const logo = '<a class="logo" href="#home"><span class="lg">💬</span>Pulse</a>';
 const tbtn = '<button class="btn ic" data-act="theme" title="Тема">🌓</button>';
 function nav() {
-  const u = me();
-  return `<nav class="nav">${logo}<div class="fx">${tbtn}${u
+  return `<nav class="nav">${logo}<div class="fx">${tbtn}${ME
     ? '<a class="btn p" href="#chat">Открыть чат</a>'
     : '<a class="btn" href="#login">Войти</a><a class="btn p" href="#register">Регистрация</a>'}</div></nav>`;
 }
@@ -260,7 +290,7 @@ function home() {
   <section class="hero">
     <div class="tx">
       <h1>Общайся <span class="g">быстро</span> и красиво</h1>
-      <p>Pulse — лёгкий веб-мессенджер с ИИ-собеседниками: калькулятор считает любые примеры, а Ева поддержит разговор. Приглашай друзей по ссылке.</p>
+      <p>Pulse — веб-мессенджер с ИИ-собеседниками: калькулятор считает любые примеры, а Ева поддержит разговор. Приглашай друзей по ссылке и пиши им с любого устройства.</p>
       <div class="fx" style="flex-wrap:wrap"><a class="btn p" href="#register">Начать бесплатно</a><a class="btn" href="#login">У меня есть аккаунт</a></div>
     </div>
     <div class="mock">
@@ -294,25 +324,29 @@ function auth(p) {
       : 'Нет аккаунта? <a class="g" href="#register"><b>Регистрация</b></a>'}</div>
   </form></div>`;
 
-  $('f').onsubmit = e => {
+  $('f').onsubmit = async e => {
     e.preventDefault();
-    const d = Object.fromEntries(new FormData(e.target)), er = $('err');
-    const email = (d.email || '').trim().toLowerCase(), all = users();
+    const d = Object.fromEntries(new FormData(e.target)), er = $('err'), btn = e.target.querySelector('button[type=submit]');
+    const email = (d.email || '').trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(email)) return er.textContent = 'Введите корректный email';
     if ((d.pass || '').length < 6) return er.textContent = 'Пароль должен быть не короче 6 символов';
     if (reg) {
       if ((d.name || '').trim().length < 2) return er.textContent = 'Введите имя';
       if (d.pass !== d.pass2) return er.textContent = 'Пароли не совпадают';
-      if (all.some(u => u.email === email)) return er.textContent = 'Такой email уже зарегистрирован';
-      all.push({id:uid(), email, name:d.name.trim(), pass:hash(d.pass, email), status:'На связи', g:0});
-      st.set('users', all);
-    } else {
-      const u = all.find(x => x.email === email);
-      if (!u || u.pass !== hash(d.pass, email)) return er.textContent = 'Неверный email или пароль';
     }
-    st.set('me', email);
+    btn.disabled = true; er.textContent = '';
+    let r;
+    try {
+      r = reg
+        ? await sb.auth.signUp({email, password:d.pass, options:{data:{name:d.name.trim()}}})
+        : await sb.auth.signInWithPassword({email, password:d.pass});
+    } catch (x) { r = {error:{message:String(x.message || x)}}; }
+    btn.disabled = false;
+    if (r.error) return er.textContent = trErr(r.error.message);
+    if (!r.data.session) return er.textContent = 'Нужно подтвердить почту (или отключите Confirm email в Supabase)';
+    await enter(r.data.user);
     const pc = st.get('pend', null);
-    if (pc) { st.set('pend', null); addFriend(pc); }
+    if (pc) { st.set('pend', null); await addFriendById(pc); }
     go('chat');
   };
 }
@@ -322,7 +356,7 @@ function listHtml(q) {
   const items = contacts().filter(c => c.name.toLowerCase().includes(q.trim().toLowerCase()));
   if (!items.length) return '<div class="hint">Ничего не найдено</div>';
   let html = items.map(c => {
-    const l = (C[c.id] || []).slice(-1)[0];
+    const l = msgsOf(c.id).slice(-1)[0];
     const prev = typ[c.id] ? 'печатает…' : l ? (l.m ? 'Вы: ' : '') + esc(l.t) : esc(c.role);
     return `<div class="row ${c.id === cid ? 'on' : ''}" data-id="${c.id}">${av(c.name, c.g)}
       <div class="grow">
@@ -330,7 +364,7 @@ function listHtml(q) {
         <div class="fx sb"><span class="mut ell" style="font-size:14px">${prev}</span>${U[c.id] ? `<i class="bd">${U[c.id]}</i>` : ''}</div>
       </div></div>`;
   }).join('');
-  if (!F.length && !q) html += '<div class="hint">Пригласите друга кнопкой 🔗 вверху</div>';
+  if (!FR.length && !q) html += '<div class="hint">Пригласите друга кнопкой 🔗 вверху</div>';
   return html;
 }
 function refreshList() { const l = $('list'), q = $('q'); if (l && q) l.innerHTML = listHtml(q.value); }
@@ -347,13 +381,14 @@ function winHtml() {
   if (!cid) return '<div class="empty"><span>💬</span><b style="font-size:20px;color:var(--text)">Выберите чат</b><div>и начните общение</div></div>';
   const c = contacts().find(x => x.id === cid);
   if (!c) return '';
-  const sub = typ[cid] ? 'печатает…' : c.type === 'bot' ? 'ИИ · в сети' : c.local ? 'друг' : 'вне сети';
+  const bot = c.type === 'bot';
+  const sub = typ[cid] ? 'печатает…' : bot ? 'ИИ · в сети' : 'друг';
   return `<div class="wh"><button class="btn ic back" data-act="back">←</button>${av(c.name, c.g)}
     <div class="grow"><b class="ell">${esc(c.name)}</b><div class="mut" id="sub" style="font-size:13px">${sub}</div></div>
-    <button class="btn ic" data-act="clear" title="Очистить чат">🗑</button></div>
-    <div class="msgs" id="msgs">${(C[cid] || []).map(m => msgHtml(m)).join('')}</div>
+    ${bot ? '<button class="btn ic" data-act="clear" title="Очистить чат">🗑</button>' : ''}</div>
+    <div class="msgs" id="msgs">${msgsOf(cid).map(m => msgHtml(m)).join('')}</div>
     <form class="comp" id="cf">
-      <div class="ep" id="ep" hidden>${EM.map(e => `<button type="button" data-em="${e}">${e}</button>`).join('')}</div>
+    <div class="ep" id="ep" hidden>${EM.map(e => `<button type="button" data-em="${e}">${e}</button>`).join('')}</div>
       <button type="button" class="btn ic" data-act="emoji">😊</button>
       <input id="inp" placeholder="Напишите сообщение…" autocomplete="off">
       <button class="btn p" type="submit">➤</button>
@@ -361,17 +396,15 @@ function winHtml() {
 }
 
 function chat() {
-  const u = me();
-  C = st.get('c_' + u.email, {});
-  F = st.get('f_' + u.email, []);
+  C = st.get('c_' + ME.email, {});
   BOTS.forEach(b => { if (!C[b.id] || !C[b.id].length) C[b.id] = [{m:0, t:b.hi, ts:Date.now()}]; });
-  save();
+  saveC();
   app.innerHTML = `<div class="chat" id="ch">
     <aside>
       <div class="ah">
         <div class="fx sb">
-          <a class="fx" href="#profile" style="min-width:0">${av(u.name, G[u.g], 40)}
-            <div style="min-width:0"><b>${esc(u.name)}</b><div class="mut ell" style="font-size:12px;max-width:130px">${esc(u.status)}</div></div></a>
+          <a class="fx" href="#profile" style="min-width:0">${av(ME.name, G[ME.g] || G[0], 40)}
+            <div style="min-width:0"><b>${esc(ME.name)}</b><div class="mut ell" style="font-size:12px;max-width:130px">${esc(ME.status)}</div></div></a>
           <div class="fx">${tbtn}<button class="btn ic" data-act="invite" title="Пригласить друга">🔗</button><button class="btn ic" data-act="out" title="Выйти">⎋</button></div>
         </div>
         <input id="q" placeholder="🔍 Поиск">
@@ -407,56 +440,34 @@ function openChat(id) {
   if (matchMedia('(min-width:761px)').matches) { const i = $('inp'); if (i) i.focus(); }
 }
 
-function send(t) {
-  const u = me(), id = cid, c = contacts().find(x => x.id === id);
-  if (!c) return;
-  const msg = add(id, {m:1, t, ts:Date.now()});
-  addMsg(msg); refreshList();
-
-  if (c.type === 'bot') {
+async function send(t) {
+  const id = cid, email = ME.email;
+  if (isBot(id)) {
+    addMsg(addBot(id, {m:1, t, ts:Date.now()}));
+    refreshList();
     typ[id] = 1; setSub('печатает…'); refreshList();
     const out = id === 'calc' ? calcBot(t) : evaReply(t);
     setTimeout(() => {
       typ[id] = 0;
-      const cu = me();
-      if (!cu || cu.email !== u.email) return;
-      const r = add(id, {m:0, t:out, ts:Date.now()});
+      if (!ME || ME.email !== email) return;
+      const r = addBot(id, {m:0, t:out, ts:Date.now()});
       if (cid === id && $('msgs')) { addMsg(r); setSub('ИИ · в сети'); } else U[id] = (U[id] || 0) + 1;
       refreshList();
     }, id === 'calc' ? 400 : 700 + Math.min(t.length * 25, 1200));
-  } else if (c.local) {
-    const k = 'c_' + c.user.email, o = st.get(k, {});
-    (o[u.id] = o[u.id] || []).push({m:0, t, ts:msg.ts});
-    st.set(k, o);
   } else {
-    toast('Друг на другом устройстве: чтобы сообщение дошло, нужен сервер');
+    const {data, error} = await sb.from('messages').insert({sender:ME.id, receiver:id, body:t}).select().single();
+    if (error) return toast('Не удалось отправить сообщение');
+    const x = pushMsg(data);
+    if (x && cid === id) addMsg(x.m);
+    refreshList();
   }
 }
 
-// живые сообщения между аккаунтами в одном браузере
-addEventListener('storage', e => {
-  const u = me();
-  if (!u || !$('list')) return;
-  if (e.key === 'f_' + u.email) { F = st.get(e.key, []); refreshList(); }
-  if (e.key === 'c_' + u.email) {
-    const n = st.get(e.key, {});
-    for (const id in n) {
-      const a = n[id] || [], old = (C[id] || []).length;
-      if (a.length > old) {
-        const fresh = a.slice(old);
-        if (id === cid) fresh.forEach(addMsg);
-        else U[id] = (U[id] || 0) + fresh.filter(m => !m.m).length;
-      }
-    }
-    C = n; refreshList();
-  }
-});
-
 /* ================= Профиль ================= */
 function profile() {
-  const u = me();
+  const u = ME;
   app.innerHTML = `${blobs}${nav()}<div class="auth"><form class="card" id="pf" style="max-width:440px">
-    <div class="fx" style="flex-direction:column;gap:8px"><div id="pav">${av(u.name, G[u.g], 88)}</div>
+    <div class="fx" style="flex-direction:column;gap:8px"><div id="pav">${av(u.name, G[u.g] || G[0], 88)}</div>
       <span class="mut" style="font-size:14px">${esc(u.email)}</span></div>
     <label>Имя<input name="name" id="pn" value="${esc(u.name)}"></label>
     <label>Статус<input name="status" value="${esc(u.status)}" maxlength="40"></label>
@@ -470,7 +481,7 @@ function profile() {
   </form></div>`;
 
   let g = u.g;
-  const preview = () => { $('pav').innerHTML = av($('pn').value || u.name, G[g], 88); };   // мгновенный предпросмотр
+  const preview = () => { $('pav').innerHTML = av($('pn').value || u.name, G[g] || G[0], 88); };
   $('pn').oninput = preview;
   document.querySelector('.sw').onclick = e => {
     const i = e.target.closest('i');
@@ -479,20 +490,21 @@ function profile() {
     document.querySelectorAll('.sw i').forEach(x => x.classList.toggle('on', +x.dataset.g === g));
     preview();
   };
-  $('pf').onsubmit = e => {
+  $('pf').onsubmit = async e => {
     e.preventDefault();
     const d = Object.fromEntries(new FormData(e.target));
     if (d.name.trim().length < 2) return $('err').textContent = 'Имя слишком короткое';
-    const all = users(), x = all.find(a => a.email === u.email);
-    x.name = d.name.trim(); x.status = d.status.trim() || 'На связи'; x.g = g;
-    st.set('users', all);
+    const nu = {name:d.name.trim(), status:d.status.trim() || 'На связи', g};
+    const {error} = await sb.from('profiles').update(nu).eq('id', ME.id);
+    if (error) return $('err').textContent = 'Не удалось сохранить, попробуйте ещё раз';
+    Object.assign(ME, nu);
     go('chat');
   };
 }
 
 /* ================= Клики ================= */
-document.addEventListener('click', e => {
-const ep = $('ep');
+document.addEventListener('click', async e => {
+  const ep = $('ep');
   if (ep && !e.target.closest('#ep') && !e.target.closest('[data-act="emoji"]')) ep.hidden = true;
 
   if (e.target.classList.contains('modal')) return e.target.remove();
@@ -510,12 +522,12 @@ const ep = $('ep');
   if (!a) return;
   const k = a.dataset.act;
   if (k === 'theme') toggleTheme();
-  if (k === 'out') { st.set('me', null); resetState(); go('home'); }
+  if (k === 'out') { await sb.auth.signOut(); resetState(); go('home'); }
   if (k === 'back') { cid = null; $('ch').classList.remove('open'); $('win').innerHTML = winHtml(); refreshList(); }
   if (k === 'emoji') $('ep').hidden = !$('ep').hidden;
   if (k === 'invite') invite();
   if (k === 'close') document.querySelector('.modal').remove();
-  if (k === 'clear' && confirm('Очистить этот чат?')) { C[cid] = []; save(); $('msgs').innerHTML = ''; refreshList(); }
+  if (k === 'clear' && confirm('Очистить этот чат?')) { C[cid] = []; saveC(); $('msgs').innerHTML = ''; refreshList(); }
   if (k === 'copy') {
     const l = $('lk'); l.select();
     (navigator.clipboard ? navigator.clipboard.writeText(l.value) : Promise.reject())
@@ -526,27 +538,33 @@ const ep = $('ep');
   if (k === 'addlink') {
     const v = $('al').value, j = v.indexOf('join=');
     if (j < 0) return toast('Вставьте ссылку приглашения');
-    if (addFriend(v.slice(j + 5).trim())) { document.querySelector('.modal').remove(); refreshList(); }
+    if (await addFriendById(v.slice(j + 5))) { document.querySelector('.modal').remove(); refreshList(); }
   }
 });
 
-/* ================= Роутер ================= */
-function route() {
-  let h = (location.hash || '#home').slice(1);
+/* ================= Роутер и запуск ================= */
+async function route() {
+  const h = (location.hash || '#home').slice(1);
   if (h.startsWith('join=')) {                       // открыта ссылка-приглашение
     const code = h.slice(5);
-    if (me()) { addFriend(code); history.replaceState(null, '', '#chat'); }
-    else { st.set('pend', code); history.replaceState(null, '', '#register'); }
+    history.replaceState(null, '', ME ? '#chat' : '#register');
+    if (ME) await addFriendById(code); else st.set('pend', code);
     return route();
   }
-  let p = PAGES.includes(h) ? h : 'home';
-  const u = me();
-  if (!u && (p === 'chat' || p === 'profile')) return go('login');
-  if (u && (p === 'login' || p === 'register')) return go('chat');
+  const p = PAGES.includes(h) ? h : 'home';
+  if (!ME && (p === 'chat' || p === 'profile')) return go('login');
+  if (ME && (p === 'login' || p === 'register')) return go('chat');
   if (p !== 'chat') cid = null;
   ({home, login:auth, register:auth, chat, profile})[p](p);
 }
 
-applyTheme();
-addEventListener('hashchange', route);
-route();
+(async () => {
+  applyTheme();
+  app.innerHTML = '<div class="empty"><span>💬</span>Загрузка…</div>';
+  try {
+    const {data} = await sb.auth.getSession();
+    if (data.session) await enter(data.session.user);
+  } catch (e) {}
+  addEventListener('hashchange', route);
+  route();
+})();

@@ -18,7 +18,7 @@ function term() {
     if (F[x]) { if (next() !== '(') throw 0; const v = expr(); if (next() !== ')') throw 0; return F[x](v); }
     if (x in K) return K[x];
     throw 0;
-  }
+  
   const v = expr();
   if (i < t.length) throw 0;
   return v;
